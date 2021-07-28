@@ -9,7 +9,9 @@ package lru
 // Warning: lru包不提供并发一致机制
 // TODO: 实现lru-k算法
 
-import "container/list"
+import (
+	"container/list"
+)
 
 // Lengthable 接口指明对象可以获取自身占有内存空间大小 以字节为单位
 type Lengthable interface {
