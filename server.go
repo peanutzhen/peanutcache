@@ -51,6 +51,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// 跳过/basePath/ 即groupName/key
 	pathsName := strings.SplitN(req.URL.Path[len(s.basePath):], "/", 2)
 	if len(pathsName) != 2 {
+		// TODO: 这里单元测试时file line不准确 原因未知
 		panic("Key required")
 	}
 
@@ -59,11 +60,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	g := GetGroup(groupName)
 	if g == nil {
+		// TODO: 这里单元测试时file line不准确 原因未知
 		panic("group not found")
 	}
 
 	view, err := g.Get(key)
 	if err != nil {
+		// TODO: 这里单元测试时file line不准确 原因未知
 		panic(err.Error())
 	}
 
