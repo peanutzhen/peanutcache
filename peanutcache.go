@@ -6,6 +6,7 @@ package peanutcache
 
 import (
 	"fmt"
+	"github.com/peanutzhen/peanutcache/singlefilght"
 	"log"
 	"sync"
 )
@@ -37,6 +38,7 @@ type Group struct {
 	cache     *cache
 	retriever Retriever
 	server    Picker
+	flight    *singlefilght.Flight
 }
 
 // NewGroup 创建一个新的缓存空间
@@ -48,6 +50,7 @@ func NewGroup(name string, maxBytes int64, retriever Retriever) *Group {
 		name:      name,
 		cache:     newCache(maxBytes),
 		retriever: retriever,
+		flight:    &singlefilght.Flight{},
 	}
 	mu.Lock()
 	groups[name] = g
@@ -84,17 +87,22 @@ func (g *Group) Get(key string) (ByteView, error) {
 }
 
 func (g *Group) load(key string) (ByteView, error) {
-	if g.server != nil {
-		if fetcher, ok := g.server.Pick(key); ok {
-			bytes, err := fetcher.Fetch(g.name, key)
-			if err == nil {
-				return ByteView{b: cloneBytes(bytes)}, nil
+	view, err := g.flight.Fly(key, func() (interface{}, error) {
+		if g.server != nil {
+			if fetcher, ok := g.server.Pick(key); ok {
+				bytes, err := fetcher.Fetch(g.name, key);
+				if err == nil {
+					return ByteView{b: cloneBytes(bytes)}, nil
+				}
+				log.Printf("fail to get *%s* from peer, %s.\n", key, err.Error())
 			}
-			log.Printf("fail to get *%s* from peer, %s.\n", key, err.Error())
-			return ByteView{}, err
 		}
+		return g.getLocally(key)
+	})
+	if err == nil {
+		return view.(ByteView), err
 	}
-	return g.getLocally(key)
+	return ByteView{}, err
 }
 
 // getLocally 本地向Retriever取回数据并填充缓存
