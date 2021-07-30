@@ -8,25 +8,41 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
+
+	"github.com/peanutzhen/peanutcache/consistenthash"
 )
 
-// server 模块为peanutcache提供http通信能力
+// server 模块为peanutcache之间提供http通信能力
 // 这样部署在其他机器上的cache可以通过http访问获取缓存
 // 至于找哪台主机 那是一致性哈希的工作了
+// 注意: peer间通信采用http协议
 
-const defaultBasePath = "/_pcache/"
+const (
+	defaultBasePath = "/_pcache/"
+	defaultReplicas = 50
+)
 
+// Server 和 Group 是解耦合的 所以Server要自己实现并发控制
 type Server struct {
-	addr     string
+	addr     string // format: ip:port
 	basePath string
+
+	mu       sync.Mutex
+	consHash *consistenthash.Consistency
+	clients  map[string]*Client
 }
 
-func NewServer(addr string) *Server {
+func NewServer(addr string) (*Server, error) {
+	if len(strings.Split(addr, ":")) != 2 {
+		return nil, fmt.Errorf("server addr format-> ip:port")
+	}
 	return &Server{
 		addr:     addr,
 		basePath: defaultBasePath,
-	}
+	}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -77,3 +93,43 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		panic("ByteView write to response failed")
 	}
 }
+
+// SetPeers 将各个远端主机IP配置到Server里
+// 这样Server就可以Pick他们了
+// 注意: 此操作是*覆写*操作！
+// 注意: peersIP必须满足 http://x.x.x.x:port的格式
+func (s *Server) SetPeers(peersURL ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.consHash = consistenthash.New(defaultReplicas, nil)
+	s.consHash.Register(peersURL...)
+	s.clients = make(map[string]*Client)
+	for _, peerURL := range peersURL {
+		if !validPeerURL(peerURL) {
+			panic(fmt.Sprintf("[peer %s] using not a http protocol or containing a path.", peerURL))
+		}
+		s.clients[peerURL] = NewClient(peerURL + defaultBasePath)
+	}
+}
+
+// Pick 根据一致性哈希选举出key应存放在的cache
+// return false 代表从本地获取cache
+func (s *Server) Pick(key string) (Fetcher, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	peerURL := s.consHash.GetPeer(key)
+	u, err := url.Parse(peerURL)
+	if err != nil {
+		return nil, false
+	}
+	// Pick itself
+	if u.Host == s.addr {
+		log.Printf("ooh! pick myself, I am %s\n", s.addr)
+		return nil, false
+	}
+	log.Printf("Pick remote peer: %s\n", peerURL)
+	return s.clients[peerURL], true
+}
+
+var _ Picker = (*Server)(nil)

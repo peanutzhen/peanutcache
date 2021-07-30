@@ -36,6 +36,7 @@ type Group struct {
 	name      string
 	cache     *cache
 	retriever Retriever
+	server    Picker
 }
 
 // NewGroup 创建一个新的缓存空间
@@ -54,6 +55,14 @@ func NewGroup(name string, maxBytes int64, retriever Retriever) *Group {
 	return g
 }
 
+// RegisterSvr 为 Group 注册 Server
+func (g *Group) RegisterSvr(p Picker) {
+	if g.server != nil {
+		panic("group had been registered server")
+	}
+	g.server = p
+}
+
 // GetGroup 获取对应命名空间的缓存
 func GetGroup(name string) *Group {
 	mu.RLock()
@@ -70,13 +79,25 @@ func (g *Group) Get(key string) (ByteView, error) {
 		log.Println("cache hit")
 		return value, nil
 	}
+	// cache missing, get it another way
 	return g.load(key)
 }
 
 func (g *Group) load(key string) (ByteView, error) {
+	if g.server != nil {
+		if fetcher, ok := g.server.Pick(key); ok {
+			bytes, err := fetcher.Fetch(g.name, key)
+			if err == nil {
+				return ByteView{b: cloneBytes(bytes)}, nil
+			}
+			log.Printf("fail to get *%s* from peer, %s.\n", key, err.Error())
+			return ByteView{}, err
+		}
+	}
 	return g.getLocally(key)
 }
 
+// getLocally 本地向Retriever取回数据并填充缓存
 func (g *Group) getLocally(key string) (ByteView, error) {
 	bytes, err := g.retriever.retrieve(key)
 	if err != nil {
@@ -87,6 +108,7 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 	return value, nil
 }
 
+// populateCache 提供填充缓存的能力
 func (g *Group) populateCache(key string, value ByteView) {
 	g.cache.add(key, value)
 }

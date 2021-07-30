@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func createTestSvr() *httptest.Server{
+func createTestSvr() *httptest.Server {
 	mysql := map[string]string{
 		"Tom":  "630",
 		"Jack": "589",
@@ -30,7 +30,7 @@ func createTestSvr() *httptest.Server{
 			return nil, fmt.Errorf("%s not exist", key)
 		}))
 
-	svr := NewServer("")
+	svr, _ := NewServer("localhost:9999")
 	ts := httptest.NewServer(svr)
 	svr.addr = ts.URL
 	return ts
@@ -38,10 +38,10 @@ func createTestSvr() *httptest.Server{
 
 func TestServer_GetExistsKey(t *testing.T) {
 	ts := createTestSvr()
-	res, _ := http.Get(fmt.Sprintf("%s%sscores/Tom", ts.URL,defaultBasePath))
+	res, _ := http.Get(fmt.Sprintf("%s%sscores/Tom", ts.URL, defaultBasePath))
 	body, _ := ioutil.ReadAll(res.Body)
 	if !reflect.DeepEqual(string(body), "630") {
-		t.Errorf("Tom %s(actual)/%s(ok)", string(body),"630")
+		t.Errorf("Tom %s(actual)/%s(ok)", string(body), "630")
 	}
 	res.Body.Close()
 	ts.Close()
@@ -54,7 +54,7 @@ func TestServer_GetBadPath(t *testing.T) {
 		t.Errorf("Status code should be 500.")
 	}
 	body, _ := ioutil.ReadAll(res.Body)
-	t.Log("错误basePath查询Tom返回: "+string(body))
+	t.Log("错误basePath查询Tom返回: " + string(body))
 	res.Body.Close()
 	ts.Close()
 }
@@ -66,7 +66,7 @@ func TestServer_GetUnknownKey(t *testing.T) {
 		t.Errorf("Status code should be 500.")
 	}
 	body, _ := ioutil.ReadAll(res.Body)
-	t.Log("正确规则查询不存在key: "+string(body))
+	t.Log("正确规则查询不存在key: " + string(body))
 	res.Body.Close()
 }
 
@@ -77,7 +77,7 @@ func TestServer_GetUnknownGroup(t *testing.T) {
 		t.Errorf("Status code should be 500.")
 	}
 	body, _ := ioutil.ReadAll(res.Body)
-	t.Log("正确规则查询不存在group: "+string(body))
+	t.Log("正确规则查询不存在group: " + string(body))
 	res.Body.Close()
 }
 
@@ -88,6 +88,6 @@ func TestServer_GetNoKey(t *testing.T) {
 		t.Errorf("Status code should be 500.")
 	}
 	body, _ := ioutil.ReadAll(res.Body)
-	t.Log("错误规则不填key返回: "+string(body))
+	t.Log("错误规则不填key返回: " + string(body))
 	res.Body.Close()
 }
