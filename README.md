@@ -100,7 +100,7 @@ func GetTomScore(group *peanutcache.Group, wg *sync.WaitGroup) {
 	fmt.Println(view.String())
 }
 ```
-Use `go run`, you will get follows:
+Before `go run`, you should run `etcd` local directly(without any spcified parameter) and then execute `go run example.go`, you will get follows:
 
 ```console
 $ go run peanutcache_usage.go
