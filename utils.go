@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"net/url"
 )
 
 // 显示错误时运行堆栈
@@ -27,13 +26,14 @@ func trace(errorMessage string) string {
 	return str.String()
 }
 
-// 判断是否满足http://x.x.x.x:port的格式
-func validPeerURL(URL string) bool {
-	u, err := url.Parse(URL)
-	if err != nil {
+// 判断是否满足 x.x.x.x:port 的格式
+func validPeerAddr(addr string) bool {
+	token1 := strings.Split(addr, ":")
+	if len(token1) != 2 {
 		return false
 	}
-	if u.Scheme != "http" || len(u.Path) != 0 {
+	token2 := strings.Split(token1[0], ".")
+	if token1[0] != "localhost" && len(token2) != 4 {
 		return false
 	}
 	return true

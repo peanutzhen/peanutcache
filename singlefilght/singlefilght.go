@@ -4,7 +4,9 @@
 
 package singlefilght
 
-import "sync"
+import (
+	"sync"
+)
 
 // singlefilght 为peanutcache提供缓存击穿的保护
 // 当cache并发访问peer获取缓存时 如果peer未缓存该值

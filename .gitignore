@@ -7,3 +7,6 @@
 # Macos file system
 .DS_Store
 */.DS_Store
+
+# etcd data
+default.etcd

@@ -74,6 +74,16 @@ func GetGroup(name string) *Group {
 	return g
 }
 
+func DestroyGroup(name string) {
+	g := GetGroup(name)
+	if g != nil {
+		svr := g.server.(*server)
+		svr.Stop()
+		delete(groups, name)
+		log.Printf("Destroy cache [%s %s]", name, svr.addr)
+	}
+}
+
 func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
 		return ByteView{}, fmt.Errorf("key required")
@@ -90,7 +100,7 @@ func (g *Group) load(key string) (ByteView, error) {
 	view, err := g.flight.Fly(key, func() (interface{}, error) {
 		if g.server != nil {
 			if fetcher, ok := g.server.Pick(key); ok {
-				bytes, err := fetcher.Fetch(g.name, key);
+				bytes, err := fetcher.Fetch(g.name, key)
 				if err == nil {
 					return ByteView{b: cloneBytes(bytes)}, nil
 				}

@@ -5,47 +5,52 @@
 package peanutcache
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
+	pb "github.com/peanutzhen/peanutcache/peanutcachepb"
+	"github.com/peanutzhen/peanutcache/registry"
+	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// client 模块实现peanutcache访问其他远程节点
-// 从而获取缓存的能力
+// client 模块实现peanutcache访问其他远程节点 从而获取缓存的能力
 
-type Client struct {
-	reqURL string
+type client struct {
+	name string // 服务名称 pcache/ip:addr
 }
 
 // Fetch 从remote peer获取对应缓存值
-func (c *Client) Fetch(group string, key string) ([]byte, error) {
-	// 构造请求url
-	u := fmt.Sprintf(
-		"%s%s/%s",
-		c.reqURL,
-		url.QueryEscape(group),
-		url.QueryEscape(key),
-	)
-
-	resp, err := http.Get(u)
+func (c *client) Fetch(group string, key string) ([]byte, error) {
+	// 创建一个etcd client
+	cli, err := clientv3.New(defaultEtcdConfig)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("peer Statuscode: %d", resp.StatusCode)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	defer cli.Close()
+	// 发现服务 取得与服务的连接
+	conn, err := registry.EtcdDial(cli, c.name)
 	if err != nil {
-		return nil, fmt.Errorf("read response body failed, %v", err)
+		return nil, err
 	}
-	return body, nil
+	defer conn.Close()
+	grpcClient := pb.NewPeanutCacheClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := grpcClient.Get(ctx, &pb.GetRequest{
+		Group: group,
+		Key:   key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not get %s/%s from peer %s", group, key, c.name)
+	}
+
+	return resp.GetValue(), nil
 }
 
-func NewClient(reqURL string) *Client {
-	return &Client{reqURL: reqURL}
+func NewClient(service string) *client {
+	return &client{name: service}
 }
 
-var _ Fetcher = (*Client)(nil)
+// 测试Client是否实现了Fetcher接口
+var _ Fetcher = (*client)(nil)

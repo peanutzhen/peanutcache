@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package peanutcachepb;
+
+option go_package = "github.com/peanutcache/peanutcachepb";
+
+message GetRequest {
+  string group = 1;
+  string key = 2;
+}
+
+message GetResponse {
+  bytes value = 1;
+}
+
+service PeanutCache {
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
