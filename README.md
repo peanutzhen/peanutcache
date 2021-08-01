@@ -13,7 +13,7 @@ The [**gRPC**](https://github.com/grpc/grpc-go) implementation of [**groupcache*
 
 ## Installation
 
-With [Go module][] support (Go 1.11+), simply add the following import
+With [Go module]() support (Go 1.11+), simply add the following import
 
 ```go
 import "github.com/peanutzhen/peanutcache"
