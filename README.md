@@ -21,7 +21,7 @@ import "github.com/peanutzhen/peanutcache"
 
 to your code, and then `go [build|run|test]` will automatically fetch the necessary dependencies.
 
-Otherwise, to install the `grpc-go` package, run the following command:
+Otherwise, to install the `peanutcache` package, run the following command:
 
 ```bash
 $ go get -u github.com/peanutzhen/peanutcache
