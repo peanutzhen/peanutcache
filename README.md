@@ -11,6 +11,14 @@ The [**gRPC**](https://github.com/grpc/grpc-go) implementation of [**groupcache*
 - **gRPC-go** v1.38.0 or later
 - **protobuf** v1.26.0 or later
 
+## TodoList
+
+欢迎大家Pull Request，可随时联系作者。
+
+1. 将一致性哈希从`Server`抽象出来，作为单独的一个`Proxy`层。避免在每个节点自己做一致性哈希，这样存在哈希环不一致的情况。
+2. 增加缓存持久化的能力。
+3. 改进`LRU cache`，使其具备`TTL`的能力，以及改进锁的粒度，提高并发度。
+
 ## Installation
 
 With [Go module]() support (Go 1.11+), simply add the following import
@@ -33,6 +41,7 @@ Here, give a example to use it `example.go`:
 
 ```go
 // example.go file
+// 运行前，你需要在本地启动Etcd实例，作为服务中心。
 
 package main
 
@@ -66,6 +75,7 @@ func main() {
 		log.Fatal(err)
 	}
 	// 设置同伴节点IP(包括自己)
+  // todo: 这里的peer地址从etcd获取(服务发现)
 	svr.SetPeers(addr)
 	// 将服务与cache绑定 因为cache和server是解耦合的
 	group.RegisterSvr(svr)
